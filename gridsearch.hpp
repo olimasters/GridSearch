@@ -91,7 +91,7 @@ inline void parallel_for(int concurrency, It begin, It end, F f)
     int tasks_per_thread = dist/concurrency;
     int extras = dist % concurrency;
     std::vector<std::thread> threads;
-    for(int i = 0; i < concurrency; ++i)
+    while(concurrency--)
     {
         end = begin + tasks_per_thread;
         if(extras > 0)
