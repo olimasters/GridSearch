@@ -2,8 +2,12 @@
 
 #include <cmath>
 #include <vector>
+
+#ifdef NO_EXECUTION_POLICY
 #include <thread>
+#else
 #include <execution>
+#endif
 
 namespace gridsearch
 {
@@ -79,6 +83,27 @@ inline auto subdivide(const T& mins, const T& maxes, int subdivisions)
     return subdivide_impl(mins, maxes, subdivisions, std::make_index_sequence<std::tuple_size<T>::value>{});
 }
 
+#ifdef NO_EXECUTION_POLICY
+template <typename It, typename F>
+inline void parallel_for(int concurrency, It begin, It end, F f)
+{
+    int dist = std::distance(begin, end);
+    int tasks_per_thread = dist/concurrency;
+    int extras = dist % concurrency;
+    std::vector<std::thread> threads;
+    for(int i = 0; i < concurrency; ++i)
+    {
+        end = begin + tasks_per_thread;
+        if(extras > 0)
+            end += extras--;
+        threads.emplace_back([begin, end, f](){std::for_each(begin, end, f);});
+        begin = end;
+    }
+    for(auto& th : threads)
+        th.join();
+}
+#endif
+
 }
 
 // Performs a grid search to maximise fun.
@@ -102,10 +127,18 @@ auto search(F fun, const T& mins, const T& maxes, int subdivisions, int concurre
     for(auto it = trial_args.begin(); it != trial_args.end(); ++it)
         arg_value_pairs.emplace_back(it, std::numeric_limits<double>::min());
 
+#ifdef NO_EXECUTION_POLICY
+    detail::parallel_for(concurrency,
+            arg_value_pairs.begin(),
+            arg_value_pairs.end(),
+            [&](auto& arg_val){arg_val.second = detail::tuple_invoke(fun, *arg_val.first);});
+#else
     std::for_each(std::execution::par,
             arg_value_pairs.begin(),
             arg_value_pairs.end(),
             [&](auto& arg_val){arg_val.second = detail::tuple_invoke(fun, *arg_val.first);});
+#endif
+    
 
     auto best = std::max_element(arg_value_pairs.begin(), arg_value_pairs.end(), [](auto&& lhs, auto&& rhs){return lhs.second < rhs.second;});
     struct { T args; double score;} result = { .args = *(best->first), .score = best->second };
@@ -113,4 +146,3 @@ auto search(F fun, const T& mins, const T& maxes, int subdivisions, int concurre
 }
 
 }
-

@@ -3,7 +3,6 @@
 #include <numeric>
 #include <vector>
 #include <algorithm>
-#include <thread>
 #include <tuple>
 #include <utility>
 
@@ -11,8 +10,10 @@
 
 double func(double x, double y)
 {
-    // using namespace std::chrono_literals;
-    // std::this_thread::sleep_for(10ms);
+#ifdef NO_EXECUTION_POLICY
+    using namespace std::chrono_literals;
+    std::this_thread::sleep_for(10ms);
+#endif
     return -(std::pow((x - 1.2),2.) + std::pow((y + 0.3),2.));
 }
 
@@ -34,7 +35,7 @@ int main(void)
 {
     std::tuple<double, double> mins = {-2,-2};
     std::tuple<double, double> maxes = {2,2};
-    auto res  = gridsearch::search(func, mins, maxes, 100, 5);
+    auto res  = gridsearch::search(func, mins, maxes, 10, 1);
     std::cout << "best score: " << res.score << std::endl;
     std::cout << "achieve with args: ";
     printTup(res.args);
