@@ -94,8 +94,8 @@ inline void parallel_for(int concurrency, It begin, It end, F f)
     while(concurrency--)
     {
         end = begin + tasks_per_thread;
-        if(extras > 0)
-            end += extras--;
+        if(extras-- > 0)
+            ++end;
         threads.emplace_back([begin, end, f](){std::for_each(begin, end, f);});
         begin = end;
     }
